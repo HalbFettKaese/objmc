@@ -193,9 +193,14 @@ if (marker == ivec4(12,34,56,78)) {
         if (isHand + isGUI == 0) {
             if (any(greaterThan(autorotate,vec2(0)))) {
                 //normal estimated rotation calculation from The Der Discohund
-                float yaw = -atan(Normal.x, Normal.z);
-                float pitch = -atan(Normal.y, length(Normal.xz));
-                posoffset = rotate(vec3(vec2(pitch,yaw)*autorotate,0) + rotation) * posoffset;
+                vec3 vPos0 = subgroupQuadBroadcast(Pos, 0);
+                vec3 vPos1 = subgroupQuadBroadcast(Pos, 1);
+                vec3 vPos2 = subgroupQuadBroadcast(Pos, 3);
+                float scale = distance(vPos0, vPos1);
+                vPos1 = normalize(vPos1 - vPos0);
+                vPos2 = normalize(vPos2 - vPos0);
+                mat3 fullRotation = mat3(vPos1, vPos2, cross(vPos1, vPos2));
+                posoffset = scale * fullRotation * vec3(-posoffset.y, posoffset.x, posoffset.z);
             }
             //pure color rotation
             else {
@@ -208,7 +213,7 @@ if (marker == ivec4(12,34,56,78)) {
     }
 #endif
     //final pos and uv
-    Pos += posoffset;
+    Pos = subgroupQuadBroadcast(Pos, 2) + posoffset;
     texCoord = (vec2(topleft.x,topleft.y+headerheight) + texCoord*size)/atlasSize
                 //make sure that faces with same uv beginning/ending renders
                 + vec2(onepixel.x*0.0001*corner,onepixel.y*0.0001*((corner+1)%4));
